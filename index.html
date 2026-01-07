@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>深邃液態單字卡 - 專業版</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+
+    <div class="container">
+        
+        <div class="top-bar">
+            <div class="mode-switch">
+                <button class="mode-btn active" id="btnModeAll" onclick="app.setMode('all')">一般模式</button>
+                <button class="mode-btn" id="btnModeSaved" onclick="app.setMode('saved')">
+                    我的收藏
+                </button>
+            </div>
+            <div class="settings-area">
+                <select id="levelSelect" onchange="app.filterLevel(this.value)">
+                    <option value="ALL">全部難度</option>
+                    <option value="A1">Level A1</option>
+                    <option value="A2">Level A2</option>
+                    <option value="B1">Level B1</option>
+                </select>
+                <button class="icon-btn" title="重置進度" onclick="app.resetProgress()">
+                    <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" fill="#fff"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="progress-container">
+            <div class="progress-fill" id="progressBar"></div>
+        </div>
+        <div class="progress-text" id="progressText">0 / 0</div>
+
+        <div id="quizView">
+            <div class="card-display">
+                <div class="action-icons">
+                    <button class="icon-btn" id="btnSaveCard" onclick="app.toggleSaveCurrent()" title="收藏此卡片">
+                        <svg viewBox="0 0 24 24" id="iconBookmark"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z" fill="#fff"/></svg>
+                    </button>
+                </div>
+                <span class="pos-badge" id="cardPos">NOUN</span>
+                <div class="word-zh" id="cardZh">載入中...</div>
+            </div>
+
+            <div class="input-area">
+                <input type="text" id="answerInput" placeholder="輸入英文..." autocomplete="off">
+            </div>
+
+            <div class="feedback" id="feedbackArea">
+                <div class="feedback-header">
+                    <span id="feedbackIcon"></span>
+                    <span id="feedbackText"></span>
+                </div>
+                <div class="answer-text" id="feedbackAnswer"></div>
+                <div class="example-box">
+                    <div class="ex-en" id="feedbackExEn"></div>
+                    <div class="ex-zh" id="feedbackExZh"></div>
+                </div>
+            </div>
+
+            <button class="btn-main" id="nextBtn" onclick="app.nextCard()">下一題</button>
+        </div>
+
+        <div id="completeView" class="complete-view">
+            <h2>恭喜！</h2>
+            <p>目前篩選範圍的卡片已全部複習完畢。</p>
+            <br>
+            <button class="btn-main" style="display:block" onclick="app.resetProgress()">重新開始</button>
+        </div>
+
+        <div class="history-panel">
+            <h4>近期記錄 (History)</h4>
+            <div id="historyList">
+                </div>
+        </div>
+
+    </div>
+
+    <script src="word.js"></script>
+
+    <script src="script.js"></script>
+</body>
+</html>
