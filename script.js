@@ -153,12 +153,9 @@ const app = {
     check() {
         const input = document.getElementById('answerInput');
         const val = input.value.trim().toLowerCase();
-        
-        // 移除 if (!val) return; 這一行，改為允許空值進入判斷
 
         const card = this.allData[this.deckIds[this.currentIndex]];
         
-        // 如果 val 為空，isCorrect 自然會是 false
         const isCorrect = val !== "" && val === card.word.toLowerCase();
 
         input.disabled = true;
@@ -168,7 +165,6 @@ const app = {
         const fb = document.getElementById('feedbackArea');
         fb.style.display = 'block';
         
-        // 根據是否正確顯示顏色
         fb.style.borderColor = isCorrect ? 'var(--correct-color)' : 'var(--wrong-color)';
         document.getElementById('fbWord').innerText = card.word;
         document.getElementById('fbExEn').innerText = card.example_en;
@@ -177,7 +173,6 @@ const app = {
         if (isCorrect) {
             this.speak();
         } else {
-            // 如果是空的或錯的，都會觸發震動動畫並將單字排回隊伍後方
             input.classList.add('shake');
             setTimeout(() => input.classList.remove('shake'), 400);
             
@@ -281,5 +276,6 @@ const app = {
 };
 
 app.init();
+
 
 window.onload = () => app.init();
