@@ -1,15 +1,15 @@
 const DB = {
     prefix: 'vocab_v4_',
-    get: (k, d) => { try { return JSON.parse(localStorage.getItem(DB.prefix + k)) || d } catch (e) { return d } },
-    set: (k, v) => localStorage.setItem(DB.prefix + k, JSON.stringify(v))
+    get: (k, d) => { try { return JSON.parse(localStorage.getItem(DB.prefix+k)) || d } catch(e) { return d }},
+    set: (k, v) => localStorage.setItem(DB.prefix+k, JSON.stringify(v))
 };
 
 const app = {
     allData: [],
     deckIds: [],
-    displayTotal: 0,
+    displayTotal: 0, 
     currentIndex: 0,
-
+    
     masteredIds: DB.get('mastered', []),
     savedIds: DB.get('saved', []),
     selectedLevels: DB.get('levels', ['A1', 'A2', 'B1']),
@@ -21,11 +21,12 @@ const app = {
             return;
         }
         this.allData = wordData.map((d, i) => ({ ...d, id: i }));
-
+        
+        // 1. 初始化篩選標籤 (這解決了之前的 innerHTML null 錯誤)
         this.renderFilters();
         
-        // 載入當前模式的進度
-        const session = DB.get(`session_${this.mode}`, null);
+        // 2. 恢復 Session (防止重整消失)
+        const session = DB.get('session', null);
         if (session && session.deckIds.length > 0) {
             this.deckIds = session.deckIds;
             this.currentIndex = session.index;
@@ -35,6 +36,7 @@ const app = {
             this.buildDeck();
         }
 
+        // 3. 綁定 Enter 鍵
         document.getElementById('answerInput').onkeydown = (e) => {
             if (e.key === 'Enter') {
                 if (document.getElementById('answerInput').disabled) {
@@ -51,7 +53,7 @@ const app = {
         const container = document.getElementById('levelFilters');
         if (!container) return;
         container.innerHTML = levels.map(l => `
-            <div class="filter-chip ${this.selectedLevels.includes(l) ? 'active' : ''}" onclick="app.toggleLevel('${l}')">${l}</div>
+            <div class="filter-chip ${this.selectedLevels.includes(l)?'active':''}" onclick="app.toggleLevel('${l}')">${l}</div>
         `).join('');
     },
 
@@ -65,7 +67,7 @@ const app = {
         }
         DB.set('levels', this.selectedLevels);
         this.renderFilters();
-        this.buildDeck(); // 切換難度時需重新生成題庫
+        this.buildDeck();
     },
 
     buildDeck() {
@@ -76,16 +78,9 @@ const app = {
             pool = pool.filter(d => !this.masteredIds.includes(d.id));
         }
 
-        // 若該模式沒資料
-        if (pool.length === 0) {
-            this.deckIds = [];
-            this.renderEmpty();
-            return;
-        }
-
         this.deckIds = this.shuffle(pool.map(d => d.id));
         this.currentIndex = 0;
-        this.displayTotal = this.deckIds.length;
+        this.displayTotal = this.deckIds.length; 
         this.saveSession();
         this.renderCard();
     },
@@ -94,9 +89,10 @@ const app = {
         const quiz = document.getElementById('quizView');
         const complete = document.getElementById('completeView');
 
-        // 自動循環邏輯
-        if (this.deckIds.length > 0 && this.currentIndex >= this.deckIds.length) {
-            this.buildDeck(); // 重新開始
+        if (this.currentIndex >= this.deckIds.length) {
+            quiz.style.display = 'none';
+            complete.style.display = 'block';
+            this.updateProgress();
             return;
         }
 
@@ -106,7 +102,7 @@ const app = {
         const card = this.allData[this.deckIds[this.currentIndex]];
         document.getElementById('cardPos').innerText = `${card.level} | ${card.pos}`;
         document.getElementById('cardZh').innerText = card.ch;
-
+        
         const input = document.getElementById('answerInput');
         input.value = '';
         input.disabled = false;
@@ -115,16 +111,9 @@ const app = {
         document.getElementById('feedbackArea').style.display = 'none';
         document.getElementById('btnNext').style.display = 'none';
         document.getElementById('btnSkip').style.display = 'block';
-
+        
         this.updateSaveIcon();
         this.updateProgress();
-    },
-
-    renderEmpty() {
-        document.getElementById('cardZh').innerText = this.mode === 'saved' ? "收藏清單是空的" : "沒有可複習的單字";
-        document.getElementById('answerInput').disabled = true;
-        document.getElementById('progressText').innerText = "0 / 0";
-        document.getElementById('progressBar').style.width = `0%`;
     },
 
     check() {
@@ -162,7 +151,7 @@ const app = {
 
     skip() {
         const id = this.deckIds[this.currentIndex];
-        this.deckIds.push(id);
+        this.deckIds.push(id); 
         this.currentIndex++;
         this.saveSession();
         this.renderCard();
@@ -178,39 +167,22 @@ const app = {
         const total = this.displayTotal;
         const current = total === 0 ? 0 : Math.min(this.currentIndex + 1, total);
         const percent = total === 0 ? 0 : (this.currentIndex / total) * 100;
-
+        
         document.getElementById('progressText').innerText = `${current} / ${total}`;
         document.getElementById('progressBar').style.width = `${Math.min(percent, 100)}%`;
     },
 
     setMode(m) {
-        if (this.mode === m) return;
-        
-        // 儲存當前模式的進度
-        this.saveSession();
-        
         this.mode = m;
         DB.set('mode', m);
-        
-        // UI 更新
-        document.getElementById('modeAll').classList.toggle('active', m === 'all');
-        document.getElementById('modeSaved').classList.toggle('active', m === 'saved');
-        
-        // 嘗試從該模式的 Session 恢復
-        const session = DB.get(`session_${m}`, null);
-        if (session && session.deckIds.length > 0) {
-            this.deckIds = session.deckIds;
-            this.currentIndex = session.index;
-            this.displayTotal = session.displayTotal;
-            this.renderCard();
-        } else {
-            this.buildDeck();
-        }
+        document.getElementById('modeAll').classList.toggle('active', m==='all');
+        document.getElementById('modeSaved').classList.toggle('active', m==='saved');
+        this.buildDeck();
     },
 
     toggleSave() {
         const id = this.deckIds[this.currentIndex];
-        if (this.savedIds.includes(id)) this.savedIds = this.savedIds.filter(x => x !== id);
+        if (this.savedIds.includes(id)) this.savedIds = this.savedIds.filter(x => x!==id);
         else this.savedIds.push(id);
         DB.set('saved', this.savedIds);
         this.updateSaveIcon();
@@ -239,22 +211,17 @@ const app = {
     },
 
     shuffle: (arr) => arr.sort(() => Math.random() - 0.5),
+    saveSession() { DB.set('session', { deckIds: this.deckIds, index: this.currentIndex, displayTotal: this.displayTotal }); },
     
-    saveSession() { 
-        DB.set(`session_${this.mode}`, { 
-            deckIds: this.deckIds, 
-            index: this.currentIndex, 
-            displayTotal: this.displayTotal 
-        }); 
-    },
-
+    // 修正：這對應 HTML 的 app.reset()
     reset() {
-        if (confirm("確定要重置進度嗎？這會清除所有已學會標記。")) {
+        if (confirm("確定要重置進度嗎？這會清除所有『已學會』的標記。")) {
             this.masteredIds = [];
             DB.set('mastered', []);
-            localStorage.removeItem(DB.prefix + 'session_all');
-            localStorage.removeItem(DB.prefix + 'session_saved');
+            localStorage.removeItem(DB.prefix + 'session');
             this.buildDeck();
         }
     }
 };
+
+window.onload = () => app.init();
