@@ -118,12 +118,15 @@ const app = {
         const quiz = document.getElementById('quizView');
         const complete = document.getElementById('completeView');
         
-        if (this.deckIds.length === 0) return this.renderEmpty();
+        const cardId = this.deckIds[this.currentIndex];
+        const card = this.allData[cardId];
+
+        if (!this.deckIds.length || !card) { 
+            return this.renderEmpty(); 
+        }
 
         quiz.style.display = 'block';
         complete.style.display = 'none';
-
-        const card = this.allData[this.deckIds[this.currentIndex]];
         
         document.getElementById('cardPos').innerText = `${card.level} | ${card.pos}`;
         document.getElementById('cardZh').innerText = card.ch;
@@ -248,6 +251,14 @@ const app = {
     updateSaveIcon() {
         const icon = document.getElementById('saveIcon');
         const id = this.deckIds[this.currentIndex];
+        
+        // 如果 id 是 undefined，直接回傳不執行後續邏輯
+        if (id === undefined) {
+            icon.style.fill = 'none';
+            icon.style.stroke = 'currentColor';
+            return;
+        }
+
         const isSaved = this.savedIds.includes(id);
         icon.style.fill = isSaved ? '#ffd700' : 'none';
         icon.style.stroke = isSaved ? '#ffd700' : 'currentColor';
