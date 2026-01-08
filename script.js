@@ -281,3 +281,5 @@ const app = {
 };
 
 app.init();
+
+window.onload = () => app.init();
