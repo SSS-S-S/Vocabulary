@@ -24,6 +24,7 @@ const app = {
     deckIds: [],
     displayTotal: 0,
     currentIndex: 0,
+    currentCardId: null,
     savedIds: [],
     selectedLevels: [], 
     mode: 'all',
@@ -121,6 +122,8 @@ const app = {
         const cardId = this.deckIds[this.currentIndex];
         const card = this.allData[cardId];
 
+        this.currentCardId = cardId;
+
         if (!this.deckIds.length || !card) { 
             return this.renderEmpty(); 
         }
@@ -157,7 +160,8 @@ const app = {
         const input = document.getElementById('answerInput');
         const val = input.value.trim().toLowerCase();
 
-        const card = this.allData[this.deckIds[this.currentIndex]];
+        const currentId = this.deckIds[this.currentIndex];
+        const card = this.allData[currentId];
         
         const isCorrect = val !== "" && val === card.word.toLowerCase();
 
@@ -173,16 +177,16 @@ const app = {
         document.getElementById('fbExEn').innerText = card.example_en;
         document.getElementById('fbExZh').innerText = card.example_ch;
 
+        this.speak(); 
+
         if (isCorrect) {
-            this.speak();
         } else {
             input.classList.add('shake');
             setTimeout(() => input.classList.remove('shake'), 400);
-            
-            const wrongId = this.deckIds.splice(this.currentIndex, 1)[0];
+            this.deckIds.splice(this.currentIndex, 1);
             const remainingCount = this.deckIds.length - this.currentIndex;
             const insertOffset = Math.floor(Math.random() * (remainingCount + 1));
-            this.deckIds.splice(this.currentIndex + insertOffset, 0, wrongId);
+            this.deckIds.splice(this.currentIndex + insertOffset, 0, currentId);
             this.currentIndex--; 
         }
         this.saveSession();
@@ -200,7 +204,7 @@ const app = {
     next() {
         this.currentIndex++;
         if (this.currentIndex >= this.deckIds.length) {
-            this.currentIndex = 0; // 循環播放
+            this.currentIndex = 0;
         }
         this.saveSession();
         this.renderCard();
@@ -260,14 +264,14 @@ const app = {
     },
 
     speak() {
-        const id = this.deckIds[this.currentIndex];
-        if (id === undefined) return;
-        const msg = new SpeechSynthesisUtterance(this.allData[id].word);
-        msg.lang = 'en-US';
+        if (this.currentCardId === null) return;
+        const word = this.allData[this.currentCardId].word;
         window.speechSynthesis.cancel();
+        const msg = new SpeechSynthesisUtterance(word);
+        msg.lang = 'en-US';
         window.speechSynthesis.speak(msg);
     },
-
+    
     shuffle: (arr) => [...arr].sort(() => Math.random() - 0.5),
 
     saveSession() {
