@@ -1412,7 +1412,7 @@ const wordData = [
     {"level":`B1`,"word":`factor`,"pos":`n.`,"ch":`因素`,"example_en":`Price is a major factor in our decision.`,"example_ch":`價格是我們決策中的一個主要因素。`},
     {"level":`B1`,"word":`failure`,"pos":`n.`,"ch":`失敗`,"example_en":`Failure is the mother of success.`,"example_ch":`失敗為成功之母。`},
     {"level":`A2`,"word":`fair`,"pos":`adj.`,"ch":`公平的 / 美好的`,"example_en":`Life is not always fair.`,"example_ch":`生活並不總是公平的。`},
-    {"level":`A1`,"word":`FALSE`,"pos":`adj.`,"ch":`錯誤的 / 假的`,"example_en":`Is the statement true or false?`,"example_ch":`這個敘述是正確的還是錯誤的？`},
+    {"level":`A1`,"word":`false`,"pos":`adj.`,"ch":`錯誤的 / 假的`,"example_en":`Is the statement true or false?`,"example_ch":`這個敘述是正確的還是錯誤的？`},
     {"level":`A2`,"word":`fashion`,"pos":`n.`,"ch":`時尚 / 流行`,"example_en":`She always follows the latest fashion.`,"example_ch":`她總是追隨最新時尚。`},
     {"level":`B1`,"word":`fate`,"pos":`n.`,"ch":`命運`,"example_en":`We don't know what fate has in store for us.`,"example_ch":`我們不知道命運為我們準備了什麼。`},
     {"level":`A2`,"word":`fault`,"pos":`n.`,"ch":`過錯 / 缺點`,"example_en":`It's not my fault that we are late.`,"example_ch":`我們遲到不是我的錯。`},
@@ -2029,7 +2029,7 @@ const wordData = [
     {"level":`B1`,"word":`trial`,"pos":`n.`,"ch":`審判 / 試驗`,"example_en":`The case is now on trial.`,"example_ch":`這案子目前正在審理中。`},
     {"level":`A1`,"word":`triangle`,"pos":`n.`,"ch":`三角形`,"example_en":`A triangle has three sides.`,"example_ch":`三角形有三條邊。`},
     {"level":`A2`,"word":`trick`,"pos":`n./v.`,"ch":`惡作劇 / 欺騙`,"example_en":`Trick or treat!`,"example_ch":`不給糖就搗蛋！`},
-    {"level":`A1`,"word":`TRUE`,"pos":`adj.`,"ch":`真實的`,"example_en":`Is it true that you are leaving?`,"example_ch":`你要離開是真的嗎？`},
+    {"level":`A1`,"word":`true`,"pos":`adj.`,"ch":`真實的`,"example_en":`Is it true that you are leaving?`,"example_ch":`你要離開是真的嗎？`},
     {"level":`A2`,"word":`trust`,"pos":`v./n.`,"ch":`信任`,"example_en":`You can trust me.`,"example_ch":`你可以信任我。`},
     {"level":`A2`,"word":`truth`,"pos":`n.`,"ch":`真相`,"example_en":`Please tell me the truth.`,"example_ch":`請告訴我真相。`},
     {"level":`A2`,"word":`tube`,"pos":`n.`,"ch":`管子 / 軟管`,"example_en":`I need a tube of toothpaste.`,"example_ch":`我需要一條牙膏。`},
@@ -6193,4 +6193,5 @@ const wordData = [
     {"level":`B1`,"word":`yoga`,"pos":`n.`,"ch":`瑜伽`,"example_en":`Doing yoga helps me to stay flexible and calm.`,"example_ch":`做瑜伽有助於我保持身體柔軟與內心平靜。`},
     {"level":`B1`,"word":`yogurt`,"pos":`n.`,"ch":`優格`,"example_en":`I like to eat Greek yogurt with honey.`,"example_ch":`我喜歡吃加了蜂蜜的希臘優格。`},
     {"level":`B1`,"word":`zoom`,"pos":`v./n.`,"ch":`疾馳 / 縮放 (鏡頭)`,"example_en":`The car zoomed past us on the highway.`,"example_ch":`汽車在高速公路上從我們身邊疾馳而過。`}
+
 ];
