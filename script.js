@@ -1,20 +1,49 @@
 const DB = {
     prefix: 'vocab_v4_',
     VERSION: 'v1.1',
-    get: (k, d) => { try { return JSON.parse(localStorage.getItem(DB.prefix + k)) || d } catch (e) { return d } },
-    set: (k, v) => localStorage.setItem(DB.prefix + k, JSON.stringify(v)),
-    remove: (k) => localStorage.removeItem(DB.prefix + k),
-    
+
+    get(k, d) {
+        try {
+            const raw = localStorage.getItem(this.prefix + k);
+            if (raw === null || raw === undefined) return d;
+            const parsed = JSON.parse(raw);
+            return parsed ?? d;
+        } catch (e) {
+            console.warn('DB.get parse error for', k, e);
+            return d;
+        }
+    },
+
+    set(k, v) {
+        try {
+            localStorage.setItem(this.prefix + k, JSON.stringify(v));
+        } catch (e) {
+            console.warn('DB.set error', k, e);
+        }
+    },
+
+    remove(k) {
+        try {
+            localStorage.removeItem(this.prefix + k);
+        } catch (e) {
+            console.warn('DB.remove error', k, e);
+        }
+    },
+
     clearOldData() {
-        const savedVersion = localStorage.getItem(this.prefix + 'app_version');
-        if (savedVersion !== this.VERSION) {
-            Object.keys(localStorage).forEach(key => {
-                if (key.startsWith(this.prefix)) {
-                    localStorage.removeItem(key);
-                }
-            });
-            localStorage.setItem(this.prefix + 'app_version', this.VERSION);
-            console.log("偵測到新版本，已自動清理舊資料。");
+        try {
+            const savedVersion = localStorage.getItem(this.prefix + 'app_version');
+            if (savedVersion !== this.VERSION) {
+                Object.keys(localStorage).forEach(key => {
+                    if (key.startsWith(this.prefix)) {
+                        localStorage.removeItem(key);
+                    }
+                });
+                localStorage.setItem(this.prefix + 'app_version', this.VERSION);
+                console.log('偵測到新版本，已自動清理舊資料。');
+            }
+        } catch (e) {
+            console.warn('clearOldData error', e);
         }
     }
 };
@@ -26,41 +55,44 @@ const app = {
     currentIndex: 0,
     currentCardId: null,
     savedIds: [],
-    selectedLevels: [], 
+    selectedLevels: [],
     mode: 'all',
 
     getSessionKey() {
         const levelKey = [...this.selectedLevels].sort().join('_');
-        return `session_${this.mode}_${levelKey}`;
+        return `session_all_${levelKey}`;
     },
 
     init() {
-        // 第一步：執行清理機制
         DB.clearOldData();
 
-        // 第二步：載入設定
         this.savedIds = DB.get('saved', []);
         this.selectedLevels = DB.get('levels', ['A1', 'A2', 'B1']);
         this.mode = DB.get('mode', 'all');
 
         if (typeof wordData === 'undefined') {
-            document.getElementById('cardZh').innerText = "找不到 word.js 檔案";
+            const el = document.getElementById('cardZh');
+            if (el) el.innerText = '找不到 word.js';
             return;
         }
 
         this.allData = wordData.map((d, i) => ({ ...d, id: i }));
+
         this.renderFilters();
         this.loadSession();
 
-        document.getElementById('answerInput').onkeydown = (e) => {
-            if (e.key === 'Enter') {
-                document.getElementById('answerInput').disabled ? this.next() : this.check();
-            }
-        };
+        const answerInput = document.getElementById('answerInput');
+        if (answerInput) {
+            answerInput.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    answerInput.disabled ? this.next() : this.check();
+                }
+            };
+        }
     },
 
     renderFilters() {
-        const levels = ['A1', 'A2', 'B1']; 
+        const levels = ['A1', 'A2', 'B1'];
         const container = document.getElementById('levelFilters');
         if (!container) return;
         container.innerHTML = levels.map(l => `
@@ -70,25 +102,30 @@ const app = {
 
     toggleLevel(l) {
         if (this.selectedLevels.includes(l)) {
-            if (this.selectedLevels.length > 1) this.selectedLevels = this.selectedLevels.filter(x => x !== l);
+            if (this.selectedLevels.length > 1) {
+                this.selectedLevels = this.selectedLevels.filter(x => x !== l);
+            }
         } else {
             this.selectedLevels.push(l);
         }
         DB.set('levels', this.selectedLevels);
         this.renderFilters();
-        this.loadSession(); 
+        this.buildDeck();
     },
 
     loadSession() {
-        const key = this.getSessionKey();
-        const session = DB.get(key, null);
-        
         if (this.mode === 'saved') {
             this.buildDeck();
-        } else if (session && session.deckIds.length > 0) {
-            this.deckIds = session.deckIds;
-            this.currentIndex = session.index;
-            this.displayTotal = session.displayTotal;
+            return;
+        }
+
+        const session = DB.get(this.getSessionKey(), null);
+
+        if (session && Array.isArray(session.deckIds) && session.deckIds.length > 0) {
+            this.deckIds = session.deckIds.slice();
+            const maxIndex = Math.max(0, this.deckIds.length - 1);
+            this.currentIndex = Math.min(Math.max(session.index || 0, 0), maxIndex);
+            this.displayTotal = typeof session.displayTotal === 'number' ? session.displayTotal : this.deckIds.length;
             this.renderCard();
         } else {
             this.buildDeck();
@@ -97,13 +134,14 @@ const app = {
 
     buildDeck() {
         let pool = this.allData.filter(d => this.selectedLevels.includes(d.level));
-        
+
         if (this.mode === 'saved') {
             pool = pool.filter(d => this.savedIds.includes(d.id));
         }
 
-        if (pool.length === 0) {
+        if (!pool.length) {
             this.deckIds = [];
+            this.displayTotal = 0;
             this.renderEmpty();
             return;
         }
@@ -111,97 +149,149 @@ const app = {
         this.deckIds = this.shuffle(pool.map(d => d.id));
         this.currentIndex = 0;
         this.displayTotal = this.deckIds.length;
+
         this.saveSession();
         this.renderCard();
     },
 
     renderCard() {
+        if (!this.deckIds.length) {
+            this.renderEmpty();
+            return;
+        }
+
+        if (this.currentIndex < 0) this.currentIndex = 0;
+        if (this.currentIndex >= this.deckIds.length) {
+            this.currentIndex = Math.max(0, this.deckIds.length - 1);
+        }
+
         const quiz = document.getElementById('quizView');
         const complete = document.getElementById('completeView');
-        
+
         const cardId = this.deckIds[this.currentIndex];
         const card = this.allData[cardId];
 
-        this.currentCardId = cardId;
-
-        if (!this.deckIds.length || !card) { 
-            return this.renderEmpty(); 
+        if (!card) {
+            this.renderEmpty();
+            return;
         }
 
-        quiz.style.display = 'block';
-        complete.style.display = 'none';
-        
-        document.getElementById('cardPos').innerText = `${card.level} | ${card.pos}`;
-        document.getElementById('cardZh').innerText = card.ch;
+        this.currentCardId = cardId;
+
+        if (quiz) quiz.style.display = 'block';
+        if (complete) complete.style.display = 'none';
+
+        const posEl = document.getElementById('cardPos');
+        const zhEl = document.getElementById('cardZh');
+        if (posEl) posEl.innerText = `${card.level} | ${card.pos}`;
+        if (zhEl) zhEl.innerText = card.ch;
 
         const input = document.getElementById('answerInput');
-        input.value = ''; 
-        input.disabled = false; 
-        input.focus();
+        if (input) {
+            input.value = '';
+            input.disabled = false;
+            input.focus();
+            input.classList.remove('shake');
+        }
 
-        document.getElementById('feedbackArea').style.display = 'none';
-        document.getElementById('btnNext').style.display = 'none';
-        document.getElementById('btnSkip').style.display = 'block';
+        const fb = document.getElementById('feedbackArea');
+        if (fb) fb.style.display = 'none';
+        const btnNext = document.getElementById('btnNext');
+        if (btnNext) btnNext.style.display = 'none';
+        const btnSkip = document.getElementById('btnSkip');
+        if (btnSkip) btnSkip.style.display = 'block';
 
         this.updateSaveIcon();
         this.updateProgress();
     },
 
     renderEmpty() {
-        document.getElementById('cardZh').innerText = this.mode === 'saved' ? "收藏清單是空的" : "沒有對應單字";
-        document.getElementById('cardPos').innerText = "-";
-        document.getElementById('answerInput').disabled = true;
-        document.getElementById('progressText').innerText = "0 / 0";
-        document.getElementById('progressBar').style.width = `0%`;
+        const zhEl = document.getElementById('cardZh');
+        const posEl = document.getElementById('cardPos');
+        if (zhEl) zhEl.innerText = this.mode === 'saved' ? '收藏清單是空的' : '沒有對應單字';
+        if (posEl) posEl.innerText = '-';
+        const input = document.getElementById('answerInput');
+        if (input) input.disabled = true;
+        const progressText = document.getElementById('progressText');
+        if (progressText) progressText.innerText = '0 / 0';
+        const progressBar = document.getElementById('progressBar');
+        if (progressBar) progressBar.style.width = '0%';
         this.updateSaveIcon();
     },
-    
+
     check() {
         const input = document.getElementById('answerInput');
+        if (!input) return;
         const val = input.value.trim().toLowerCase();
+
+        if (!this.deckIds.length) return;
 
         const currentId = this.deckIds[this.currentIndex];
         const card = this.allData[currentId];
-        
-        const isCorrect = val !== "" && val === card.word.toLowerCase();
+        if (!card) return;
+
+        const isCorrect = val !== '' && val === (card.word || '').toLowerCase();
 
         input.disabled = true;
-        document.getElementById('btnSkip').style.display = 'none';
-        document.getElementById('btnNext').style.display = 'block';
+        const btnSkip = document.getElementById('btnSkip');
+        if (btnSkip) btnSkip.style.display = 'none';
+        const btnNext = document.getElementById('btnNext');
+        if (btnNext) btnNext.style.display = 'block';
 
         const fb = document.getElementById('feedbackArea');
-        fb.style.display = 'block';
-        
-        fb.style.borderColor = isCorrect ? 'var(--correct-color)' : 'var(--wrong-color)';
-        document.getElementById('fbWord').innerText = card.word;
-        document.getElementById('fbExEn').innerText = card.example_en;
-        document.getElementById('fbExZh').innerText = card.example_ch;
+        if (fb) {
+            fb.style.display = 'block';
+            fb.style.borderColor = isCorrect ? 'var(--correct-color)' : 'var(--wrong-color)';
+        }
 
-        this.speak(); 
+        const fbWord = document.getElementById('fbWord');
+        const fbExEn = document.getElementById('fbExEn');
+        const fbExZh = document.getElementById('fbExZh');
+        if (fbWord) fbWord.innerText = card.word || '';
+        if (fbExEn) fbExEn.innerText = card.example_en || '';
+        if (fbExZh) fbExZh.innerText = card.example_ch || '';
 
-        if (isCorrect) {
-        } else {
-            input.classList.add('shake');
-            setTimeout(() => input.classList.remove('shake'), 400);
+        this.speak();
+
+        if (!isCorrect) {
+            if (input) {
+                input.classList.add('shake');
+                setTimeout(() => input.classList.remove('shake'), 400);
+            }
+
             this.deckIds.splice(this.currentIndex, 1);
-            const remainingCount = this.deckIds.length - this.currentIndex;
+            const remainingCount = Math.max(0, this.deckIds.length - this.currentIndex);
             const insertOffset = Math.floor(Math.random() * (remainingCount + 1));
             this.deckIds.splice(this.currentIndex + insertOffset, 0, currentId);
-            this.currentIndex--; 
+
+            if (this.currentIndex >= this.deckIds.length) {
+                this.currentIndex = Math.max(0, this.deckIds.length - 1);
+            }
         }
+
         this.saveSession();
     },
 
     skip() {
-        const currentId = this.deckIds.splice(this.currentIndex, 1)[0];
-        const remainingCount = this.deckIds.length - this.currentIndex;
+        if (!this.deckIds.length) return;
+        const id = this.deckIds.splice(this.currentIndex, 1)[0];
+        const remainingCount = Math.max(0, this.deckIds.length - this.currentIndex);
         const insertOffset = Math.floor(Math.random() * (remainingCount + 1));
-        this.deckIds.splice(this.currentIndex + insertOffset, 0, currentId);
+        this.deckIds.splice(this.currentIndex + insertOffset, 0, id);
+
+        if (this.currentIndex >= this.deckIds.length) {
+            this.currentIndex = Math.max(0, this.deckIds.length - 1);
+        }
+
         this.saveSession();
         this.renderCard();
     },
 
     next() {
+        if (!this.deckIds.length) {
+            this.renderEmpty();
+            return;
+        }
         this.currentIndex++;
         if (this.currentIndex >= this.deckIds.length) {
             this.currentIndex = 0;
@@ -211,23 +301,32 @@ const app = {
     },
 
     updateProgress() {
-        const total = this.displayTotal;
-        const current = total === 0 ? 0 : Math.min(this.currentIndex + 1, total);
-        const percent = total === 0 ? 0 : (this.currentIndex / total) * 100;
-        document.getElementById('progressText').innerText = `${current} / ${total}`;
-        document.getElementById('progressBar').style.width = `${percent}%`;
+        const total = this.displayTotal || 0;
+        const current = total ? Math.min(this.currentIndex + 1, total) : 0;
+        const percent = total ? (current / total) * 100 : 0;
+
+        const textEl = document.getElementById('progressText');
+        if (textEl) textEl.innerText = `${current} / ${total}`;
+        const bar = document.getElementById('progressBar');
+        if (bar) bar.style.width = `${percent}%`;
     },
 
     setMode(m) {
         if (this.mode === m) return;
         this.mode = m;
         DB.set('mode', m);
-        document.getElementById('modeAll').classList.toggle('active', m === 'all');
-        document.getElementById('modeSaved').classList.toggle('active', m === 'saved');
+
+        const modeAll = document.getElementById('modeAll');
+        const modeSaved = document.getElementById('modeSaved');
+        if (modeAll) modeAll.classList.toggle('active', m === 'all');
+        if (modeSaved) modeSaved.classList.toggle('active', m === 'saved');
+
         this.loadSession();
     },
 
     toggleSave() {
+        if (!this.deckIds.length) return;
+
         const id = this.deckIds[this.currentIndex];
         if (id === undefined) return;
 
@@ -236,61 +335,76 @@ const app = {
         } else {
             this.savedIds.push(id);
         }
+
         DB.set('saved', this.savedIds);
         this.updateSaveIcon();
 
         if (this.mode === 'saved' && !this.savedIds.includes(id)) {
             this.deckIds.splice(this.currentIndex, 1);
             this.displayTotal = this.deckIds.length;
-            this.deckIds.length === 0 ? this.renderEmpty() : this.renderCard();
-            this.saveSession();
+            if (this.currentIndex >= this.deckIds.length) {
+                this.currentIndex = Math.max(0, this.deckIds.length - 1);
+            }
+            this.deckIds.length ? this.renderCard() : this.renderEmpty();
+            return;
         }
+        this.saveSession();
     },
 
     updateSaveIcon() {
         const icon = document.getElementById('saveIcon');
-        const id = this.deckIds[this.currentIndex];
-        
-        // 如果 id 是 undefined，直接回傳不執行後續邏輯
-        if (id === undefined) {
+        if (!icon) return;
+
+        if (!this.deckIds.length) {
             icon.style.fill = 'none';
             icon.style.stroke = 'currentColor';
             return;
         }
 
+        const id = this.deckIds[this.currentIndex];
         const isSaved = this.savedIds.includes(id);
+
         icon.style.fill = isSaved ? '#ffd700' : 'none';
         icon.style.stroke = isSaved ? '#ffd700' : 'currentColor';
     },
 
     speak() {
-        if (this.currentCardId === null) return;
-        const word = this.allData[this.currentCardId].word;
-        window.speechSynthesis.cancel();
-        const msg = new SpeechSynthesisUtterance(word);
-        msg.lang = 'en-US';
-        window.speechSynthesis.speak(msg);
+        if (this.currentCardId == null) return;
+        if (!('speechSynthesis' in window)) return;
+        try {
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(this.allData[this.currentCardId].word || '');
+            msg.lang = 'en-US';
+            window.speechSynthesis.speak(msg);
+        } catch (e) {
+            console.warn('speak error', e);
+        }
     },
-    
-    shuffle: (arr) => [...arr].sort(() => Math.random() - 0.5),
+
+    shuffle(arr) {
+        return [...arr].sort(() => Math.random() - 0.5);
+    },
 
     saveSession() {
-        DB.set(this.getSessionKey(), { 
-            deckIds: this.deckIds, 
-            index: this.currentIndex, 
-            displayTotal: this.displayTotal 
-        });
+        if (this.mode !== 'all') return;
+        try {
+            DB.set(this.getSessionKey(), {
+                deckIds: this.deckIds,
+                index: this.currentIndex,
+                displayTotal: this.displayTotal
+            });
+        } catch (e) {
+            console.warn('saveSession error', e);
+        }
     },
 
     reset() {
-        if (confirm(`確定要重置目前進度嗎？`)) {
+        if (confirm('確定要重置目前進度嗎？')) {
             DB.remove(this.getSessionKey());
             this.buildDeck();
         }
     }
 };
 
-app.init();
 
-
-window.onload = () => app.init();
+window.addEventListener('DOMContentLoaded', () => app.init());
